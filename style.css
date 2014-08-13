@@ -1,0 +1,113 @@
+@import url(http://weloveiconfonts.com/api/?family=brandico|entypo|typicons|zocial);
+
+/* brandico */
+[class*="brandico-"]:before {
+  font-family: 'brandico', sans-serif;
+}
+
+/* entypo */
+[class*="entypo-"]:before {
+  font-family: 'entypo', sans-serif;
+}
+
+/* typicons */
+[class*="typicons-"]:before {
+  font-family: 'Typicons', sans-serif;
+}
+
+/* zocial */
+[class*="zocial-"]:before {
+  font-family: 'zocial', sans-serif;
+}
+
+#center {
+  absolute:relative;
+}
+/*中心の展開ボタン*/
+/*.centerButton{
+  min-height: 100%;
+	margin: 0 auto;
+	padding: 0;
+	/*display: table-cell;
+	vertical-align: middle;
+}*/
+
+.centerButton{
+  text-decoration:none;
+  color:white;
+  line-height:1.5em;
+  display:block;
+  height:40px;
+  width:40px;
+  border:2px solid #333333;
+  border-radius:50%;
+  background-color:black;
+  margin:4px;
+  text-align:center;
+  font-size:25px;
+  transition: 1s,ease;
+  position:absolute;
+  /*top:50%;
+  left:50%;*/
+}
+
+ .centerButton:hover{
+  line-height:1.7em;
+  font-size:30px;
+  height:50px;
+  width:50px;
+  transition: 0.3s,ease;
+}
+
+.servicesLinks{
+  list-style:none;
+  text-align:center;
+}
+/*各要素のアイコンに対して*/
+.servicesLinks a{
+  color:white;
+  text-decoration:none;
+  line-height:1.8em;
+  display:block;
+  height:30px;
+  width:30px;
+  border:2px solid #333333;
+  border-radius:50%;
+  background-color:black;
+  margin:2px;
+  opacity:0.5;
+  transition: 1s,ease;
+}
+
+.servicesLinks a:hover{
+  line-height:1.7em;
+  font-size:30px;
+  height:50px;
+  width:50px;
+  opacity:1;
+  transition: 1s,ease;
+}
+#twitter{
+  position:absolute;
+ }
+#github{
+  position:absolute;
+}
+#hatena{
+  position:absolute;
+}
+#facebook{
+  position:absolute;
+}
+#tumblr{
+  position:absolute;
+}
+#soundcloud{
+  position:absolute;
+}
+#lastfm{
+  position:absolute;
+}
+#askfm{
+  position:absolute;
+}
