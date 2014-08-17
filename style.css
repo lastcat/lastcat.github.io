@@ -76,7 +76,7 @@
   background-color:black;
   margin:2px;
   opacity:0.5;
-  transition: 1s,ease;
+  transition: 1s ease 0;
 }
 
 .servicesLinks a:hover{
@@ -85,7 +85,8 @@
   height:50px;
   width:50px;
   opacity:1;
-  transition: 1s,ease;
+  /*transition:1s,ease,0;*/
+  transition: 1s linear 0;
 }
 #twitter{
   position:absolute;
