@@ -31,5 +31,9 @@ $(function(){
       icon_animate(val,index+1);
     })
   }
-  setInterval(startTimer,1000);
+  var timer = setInterval(startTimer,1000);
+  function stopTimer(){
+    clearInterval(timer);
+  }
+  $(".servicesLinks a").hover(stopTimer,setInterval(startTimer,1000));
 });
