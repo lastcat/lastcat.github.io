@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="ja">
   <head>
+    <script
+      async
+      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2699294395566747"
+      crossorigin="anonymous"
+    ></script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ピアノの達人</title>
@@ -325,7 +330,7 @@
             ["I", "V", "vi", "IV"],
             ["I", "IV", "V", "I"],
             ["vi", "IV", "I", "V"],
-            ["I", "V_inv1", "vi", "IV_inv2"], // 展開形を含む進行
+            ["I", "V_inv1", "vi", "IV_inv2"],
           ],
         },
         "G Major": {
@@ -352,7 +357,7 @@
             ["I", "V", "vi", "IV"],
             ["I", "IV", "V", "I"],
             ["vi", "IV", "I", "V"],
-            ["I", "V_inv1", "vi", "IV"], // 展開形を含む進行
+            ["I", "V_inv1", "vi", "IV"],
           ],
         },
         "F Major": {
@@ -379,7 +384,129 @@
             ["I", "V", "vi", "IV"],
             ["I", "IV", "V", "I"],
             ["vi", "IV", "I", "V"],
-            ["IV", "V", "I_inv1", "vi"], // 展開形を含む進行
+            ["IV", "V", "I_inv1", "vi"],
+          ],
+        },
+        "D Major": {
+          notes: [
+            { midi: 62, step: 1 },
+            { midi: 64, step: 2 },
+            { midi: 66, step: 3 },
+            { midi: 67, step: 4 },
+            { midi: 69, step: 5 },
+            { midi: 71, step: 6 },
+            { midi: 73, step: 0 },
+          ],
+          signature: [
+            { midi: 78, type: "♯" },
+            { midi: 73, type: "♯" },
+          ], // F#, C#
+          chords: {
+            I: { name: "D", notes: [62, 66, 69] },
+            ii: { name: "Em", notes: [64, 67, 71] },
+            iii: { name: "F#m", notes: [66, 69, 73] },
+            IV: { name: "G", notes: [67, 71, 74] },
+            V: { name: "A", notes: [69, 73, 76] },
+            vi: { name: "Bm", notes: [71, 74, 78] },
+            "vii°": { name: "C#dim", notes: [73, 76, 79] },
+          },
+          progressions: [
+            ["I", "V", "vi", "IV"],
+            ["I", "IV", "V", "I"],
+            ["vi", "IV", "I", "V"],
+            ["ii", "V", "I", "IV"],
+          ],
+        },
+        "A Major": {
+          notes: [
+            { midi: 69, step: 5 },
+            { midi: 71, step: 6 },
+            { midi: 61, step: 0 },
+            { midi: 62, step: 1 },
+            { midi: 64, step: 2 },
+            { midi: 66, step: 3 },
+            { midi: 68, step: 4 },
+          ],
+          signature: [
+            { midi: 78, type: "♯" },
+            { midi: 73, type: "♯" },
+            { midi: 80, type: "♯" },
+          ], // F#, C#, G#
+          chords: {
+            I: { name: "A", notes: [57, 61, 64] },
+            ii: { name: "Bm", notes: [59, 62, 66] },
+            iii: { name: "C#m", notes: [61, 64, 68] },
+            IV: { name: "D", notes: [62, 66, 69] },
+            V: { name: "E", notes: [64, 68, 71] },
+            vi: { name: "F#m", notes: [66, 69, 73] },
+            "vii°": { name: "G#dim", notes: [68, 71, 74] },
+          },
+          progressions: [
+            ["I", "V", "vi", "IV"],
+            ["I", "IV", "V", "I"],
+            ["vi", "IV", "I", "V"],
+            ["I", "vi", "IV", "V"],
+          ],
+        },
+        "Bb Major": {
+          notes: [
+            { midi: 70, step: 6 },
+            { midi: 60, step: 0 },
+            { midi: 62, step: 1 },
+            { midi: 63, step: 2 },
+            { midi: 65, step: 3 },
+            { midi: 67, step: 4 },
+            { midi: 69, step: 5 },
+          ],
+          signature: [
+            { midi: 70, type: "♭" },
+            { midi: 75, type: "♭" },
+          ], // Bb, Eb
+          chords: {
+            I: { name: "Bb", notes: [58, 62, 65] },
+            ii: { name: "Cm", notes: [60, 63, 67] },
+            iii: { name: "Dm", notes: [62, 65, 69] },
+            IV: { name: "Eb", notes: [63, 67, 70] },
+            V: { name: "F", notes: [65, 69, 72] },
+            vi: { name: "Gm", notes: [67, 70, 74] },
+            "vii°": { name: "Adim", notes: [69, 72, 75] },
+          },
+          progressions: [
+            ["I", "V", "vi", "IV"],
+            ["I", "IV", "V", "I"],
+            ["vi", "IV", "I", "V"],
+            ["I", "vi", "ii", "V"],
+          ],
+        },
+        "Eb Major": {
+          notes: [
+            { midi: 63, step: 2 },
+            { midi: 65, step: 3 },
+            { midi: 67, step: 4 },
+            { midi: 68, step: 5 },
+            { midi: 70, step: 6 },
+            { midi: 72, step: 0 },
+            { midi: 74, step: 1 },
+          ],
+          signature: [
+            { midi: 70, type: "♭" },
+            { midi: 75, type: "♭" },
+            { midi: 68, type: "♭" },
+          ], // Bb, Eb, Ab
+          chords: {
+            I: { name: "Eb", notes: [63, 67, 70] },
+            ii: { name: "Fm", notes: [65, 68, 72] },
+            iii: { name: "Gm", notes: [67, 70, 74] },
+            IV: { name: "Ab", notes: [56, 60, 63] },
+            V: { name: "Bb", notes: [58, 62, 65] },
+            vi: { name: "Cm", notes: [60, 63, 67] },
+            "vii°": { name: "Ddim", notes: [62, 65, 68] },
+          },
+          progressions: [
+            ["I", "V", "vi", "IV"],
+            ["I", "IV", "V", "I"],
+            ["vi", "IV", "I", "V"],
+            ["ii", "V", "I", "vi"],
           ],
         },
       };
@@ -388,7 +515,10 @@
       // --- ユーティリティ関数 ---
       function getNoteInfo(midiNote, keyName = "C Major") {
         const names =
-          keyName.includes("b") || keyName.includes("F Major")
+          keyName.includes("b") ||
+          keyName.includes("F Major") ||
+          keyName.includes("Bb Major") ||
+          keyName.includes("Eb Major")
             ? jaNoteNamesFlat
             : jaNoteNamesSharp;
         const octave = Math.floor(midiNote / 12) - 1;
@@ -429,7 +559,10 @@
         };
 
         const keyUsesFlats =
-          keyName.includes("b") || keyName.includes("F Major");
+          keyName.includes("b") ||
+          keyName.includes("F Major") ||
+          keyName.includes("Bb Major") ||
+          keyName.includes("Eb Major");
         const noteNames = keyUsesFlats ? jaNoteNamesFlat : jaNoteNamesSharp;
 
         if (inversion === 1 && finalChord.notes.length > 1) {
