@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ピアノの達人</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Inter", "Noto Sans JP", sans-serif;
+        touch-action: manipulation;
+        background: linear-gradient(
+          135deg,
+          #f06,
+          #f90
+        ); /* 太鼓の達人風のグラデーション */
+      }
+      .result-animation {
+        animation: pop-fade 0.8s ease-out forwards;
+      }
+      @keyframes pop-fade {
+        0% {
+          transform: scale(0.5);
+          opacity: 0;
+        }
+        50% {
+          transform: scale(1.5);
+          opacity: 1;
+        } /* より大きく */
+        100% {
+          transform: scale(1);
+          opacity: 0;
+        }
+      }
+      #game-over-screen {
+        background-color: rgba(0, 0, 0, 0.85); /* より濃いオーバーレイ */
+      }
+    </style>
+  </head>
+  <body
+    class="bg-gray-100 flex flex-col items-center justify-center min-h-screen p-4"
+  >
+    <div class="w-full max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-6">
+      <header class="text-center mb-4">
+        <h1
+          class="text-4xl font-bold text-gray-800"
+          style="color: #e33; text-shadow: 2px 2px #ffc107"
+        >
+          ピアノの達人
+        </h1>
+        <p class="text-gray-500 mt-1">目指せ、ピアノマスター！</p>
+      </header>
+
+      <div
+        class="flex flex-col md:flex-row justify-between items-center gap-4 mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200"
+      >
+        <button
+          id="connect-midi"
+          class="w-full md:w-auto bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+        >
+          Bluetooth MIDIに接続
+        </button>
+        <div class="flex items-center gap-4 flex-wrap justify-center">
+          <div class="flex items-center gap-2">
+            <label for="speed-slider" class="text-sm font-medium text-gray-700"
+              >速さ:</label
+            >
+            <input
+              id="speed-slider"
+              type="range"
+              min="0.5"
+              max="3"
+              value="1"
+              step="0.1"
+              class="w-24"
+            />
+            <span
+              id="speed-value"
+              class="text-sm font-semibold text-gray-700 w-8 text-left"
+              >1.0</span
+            >
+          </div>
+          <div class="flex items-center gap-2">
+            <label for="volume-slider" class="text-sm font-medium text-gray-700"
+              >音量:</label
+            >
+            <input
+              id="volume-slider"
+              type="range"
+              min="0"
+              max="1"
+              value="0.4"
+              step="0.01"
+              class="w-24"
+            />
+            <span
+              id="volume-value"
+              class="text-sm font-semibold text-gray-700 w-10 text-left"
+              >0.40</span
+            >
+          </div>
+          <div
+            id="key-display"
+            class="text-sm font-semibold text-gray-700 bg-blue-100 px-3 py-1 rounded-md"
+          >
+            キー: C Major
+          </div>
+        </div>
+        <div
+          id="status"
+          class="text-center md:text-left text-blue-800 bg-blue-100 px-4 py-2 rounded-md text-sm"
+        >
+          接続待機中...
+        </div>
+        <div id="score" class="text-xl font-semibold text-gray-700">
+          スコア: <span id="correct-count">0</span> /
+          <span id="total-count">0</span> (<span id="accuracy">0</span>%)
+        </div>
+      </div>
+
+      <div
+        class="relative w-full aspect-[3/1] bg-gray-50 border-2 border-gray-200 rounded-lg overflow-hidden shadow-inner"
+        style="
+          background: url('data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\' viewBox=\'0 0 100 100\'><circle cx=\'50\' cy=\'50\' r=\'30\' fill=\'%23fee\' opacity=\'0.5\'/><circle cx=\'50\' cy=\'50\' r=\'20\' fill=\'%23fdd\' opacity=\'0.5\'/></svg>');
+          background-size: 50px;
+          background-color: #ffe0b2;
+        "
+      >
+        <canvas id="staff-canvas"></canvas>
+        <div
+          id="result-display"
+          class="absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 text-8xl font-bold pointer-events-none"
+          style="text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.5)"
+        ></div>
+        <div
+          id="game-over-screen"
+          class="absolute inset-0 bg-black bg-opacity-70 flex-col items-center justify-center text-white hidden"
+        >
+          <h2
+            class="text-4xl font-bold mb-4"
+            style="color: #ffcc00; text-shadow: 2px 2px #e33"
+          >
+            ゲーム終了！
+          </h2>
+          <p class="text-2xl mb-8" style="color: #fff">
+            スコア: <span id="final-score">0</span> / 10
+          </p>
+          <button
+            id="restart-button"
+            class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-lg text-xl transition-colors shadow-lg"
+          >
+            もう一度プレイ！
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // DOM要素の取得
+      const connectButton = document.getElementById("connect-midi");
+      const statusDisplay = document.getElementById("status");
+      const canvas = document.getElementById("staff-canvas");
+      const ctx = canvas.getContext("2d");
+      const resultDisplay = document.getElementById("result-display");
+      const correctCountSpan = document.getElementById("correct-count");
+      const totalCountSpan = document.getElementById("total-count");
+      const accuracySpan = document.getElementById("accuracy");
+      const gameOverScreen = document.getElementById("game-over-screen");
+      const finalScoreSpan = document.getElementById("final-score");
+      const restartButton = document.getElementById("restart-button");
+      const speedSlider = document.getElementById("speed-slider");
+      const speedValueSpan = document.getElementById("speed-value");
+      const volumeSlider = document.getElementById("volume-slider");
+      const volumeValueSpan = document.getElementById("volume-value");
+      const keyDisplay = document.getElementById("key-display");
+
+      // --- ゲームの状態管理 ---
+      let notesOnScreen = [];
+      let score = { correct: 0, total: 0 };
+      let gameRunning = false;
+      let textEffects = [];
+      let highlightEffects = [];
+      let noteSpeed = 1;
+      let volume = 0.4;
+      let audioCtx;
+      let currentKeyName = "C Major";
+
+      // --- 定数設定 ---
+      const NOTE_GENERATION_INTERVAL = 2000;
+      const GAME_LENGTH = 10;
+      const JUDGEMENT_LINE_X = canvas.width / 3;
+      const JUDGEMENT_AREA_WIDTH = 40;
+      const C4_Y = 140; // MIDI note 60 (Middle C) on its ledger line
+      const Y_STEP = 10; // Space between lines/spaces on the staff
+
+      const noteBaseSteps = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
+      const jaNoteNamesSharp = [
+        "ド",
+        "ド♯",
+        "レ",
+        "レ♯",
+        "ミ",
+        "ファ",
+        "ファ♯",
+        "ソ",
+        "ソ♯",
+        "ラ",
+        "ラ♯",
+        "シ",
+      ];
+      const jaNoteNamesFlat = [
+        "ド",
+        "レ♭",
+        "レ",
+        "ミ♭",
+        "ミ",
+        "ファ",
+        "ソ♭",
+        "ソ",
+        "ラ♭",
+        "ラ",
+        "シ♭",
+        "シ",
+      ];
+
+      const SCALES = {
+        "C Major": {
+          notes: [48, 50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67],
+          signature: [],
+        },
+        "G Major": {
+          notes: [55, 57, 59, 60, 62, 64, 66],
+          signature: [{ midi: 77, type: "♯" }],
+        }, // F#
+        "D Major": {
+          notes: [50, 52, 54, 55, 57, 59, 61],
+          signature: [
+            { midi: 77, type: "♯" },
+            { midi: 72, type: "♯" },
+          ],
+        }, // F#, C#
+        "A Major": {
+          notes: [49, 51, 53, 54, 56, 58, 60],
+          signature: [
+            { midi: 77, type: "♯" },
+            { midi: 72, type: "♯" },
+            { midi: 79, type: "♯" },
+          ],
+        }, // F#, C#, G#
+        "E Major": {
+          notes: [52, 54, 56, 57, 59, 61, 63],
+          signature: [
+            { midi: 77, type: "♯" },
+            { midi: 72, type: "♯" },
+            { midi: 79, type: "♯" },
+            { midi: 74, type: "♯" },
+          ],
+        }, // F#, C#, G#, D#
+        "B Major": {
+          notes: [49, 51, 52, 54, 56, 58, 59],
+          signature: [
+            { midi: 77, type: "♯" },
+            { midi: 72, type: "♯" },
+            { midi: 79, type: "♯" },
+            { midi: 74, type: "♯" },
+            { midi: 69, type: "♯" },
+          ],
+        }, // F#, C#, G#, D#, A#
+        "F Major": {
+          notes: [53, 55, 57, 58, 60, 62, 64],
+          signature: [{ midi: 71, type: "♭" }],
+        }, // Bb
+        "Bb Major": {
+          notes: [50, 52, 53, 55, 57, 58, 60],
+          signature: [
+            { midi: 71, type: "♭" },
+            { midi: 76, type: "♭" },
+          ],
+        }, // Bb, Eb
+        "Eb Major": {
+          notes: [51, 53, 55, 56, 58, 60, 62],
+          signature: [
+            { midi: 71, type: "♭" },
+            { midi: 76, type: "♭" },
+            { midi: 69, type: "♭" },
+          ],
+        }, // Bb, Eb, Ab
+        "Ab Major": {
+          notes: [48, 50, 51, 53, 55, 57, 58],
+          signature: [
+            { midi: 71, type: "♭" },
+            { midi: 76, type: "♭" },
+            { midi: 69, type: "♭" },
+            { midi: 74, type: "♭" },
+          ],
+        }, // Bb, Eb, Ab, Db
+        "Db Major": {
+          notes: [49, 51, 53, 54, 56, 58, 60],
+          signature: [
+            { midi: 71, type: "♭" },
+            { midi: 76, type: "♭" },
+            { midi: 69, type: "♭" },
+            { midi: 74, type: "♭" },
+            { midi: 67, type: "♭" },
+          ],
+        }, // Bb, Eb, Ab, Db, Gb
+      };
+      const KEY_NAMES = Object.keys(SCALES);
+
+      // --- ユーティリティ関数 ---
+      function getNoteInfo(midiNote, keyName = "C Major") {
+        const names =
+          keyName.includes("b") || keyName.includes("F Major")
+            ? jaNoteNamesFlat
+            : jaNoteNamesSharp;
+        const octave = Math.floor(midiNote / 12) - 1;
+        const noteIndex = midiNote % 12;
+        const C4_octave = 4;
+        const octaveOffset = (octave - C4_octave) * 7;
+        const stepWithinOctave = noteBaseSteps[noteIndex];
+        const totalStepsFromC4 = stepWithinOctave + octaveOffset;
+        const y = C4_Y - totalStepsFromC4 * Y_STEP;
+        const name = names[noteIndex];
+        return { note: midiNote, y: y, name: name };
+      }
+
+      // --- Canvasのサイズ調整 ---
+      function resizeCanvas() {
+        const parent = canvas.parentElement;
+        canvas.width = parent.clientWidth;
+        canvas.height = parent.clientHeight;
+        Object.defineProperty(window, "JUDGEMENT_LINE_X", {
+          value: canvas.width / 3,
+          writable: false,
+          configurable: true,
+        });
+        draw();
+      }
+
+      // --- 描画関連 ---
+      function drawStaff() {
+        // 五線譜の線のY座標をgetNoteInfoから計算して、音符のY座標と一致させる
+        const staffLineMidiNotes = [64, 67, 71, 74, 77]; // E4, G4, B4, D5, F5
+        const staffLinesY = staffLineMidiNotes.map(
+          (midi) => getNoteInfo(midi).y
+        );
+
+        ctx.strokeStyle = "#9ca3af";
+        ctx.lineWidth = 2;
+        staffLinesY.forEach((y) => {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(canvas.width, y);
+          ctx.stroke();
+        });
+
+        // G-clef (ト音記号) の描画。G4の線(下から2番目)を基準に配置
+        const G4_Y = staffLinesY[1];
+        ctx.font = "120px serif";
+        ctx.fillStyle = "#374151";
+        ctx.textBaseline = "middle";
+        ctx.fillText("𝄞", 10, G4_Y + 10); // Y座標を微調整して中央に
+        ctx.textBaseline = "alphabetic"; // ベースラインを元に戻す
+
+        const clefMetrics = ctx.measureText("𝄞");
+
+        // 調号の描画
+        const signature = SCALES[currentKeyName].signature;
+        ctx.font = "50px serif";
+        ctx.textBaseline = "middle";
+        let xPos = 10 + clefMetrics.width + 15; // ト音記号の幅を考慮して動的に配置
+        signature.forEach((accidental) => {
+          const noteInfo = getNoteInfo(accidental.midi);
+          ctx.fillText(accidental.type, xPos, noteInfo.y);
+          xPos += 25;
+        });
+        ctx.textBaseline = "alphabetic"; // Reset baseline
+
+        // 判定ラインの描画
+        ctx.strokeStyle = "#FF4500";
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.moveTo(JUDGEMENT_LINE_X, 0);
+        ctx.lineTo(JUDGEMENT_LINE_X, canvas.height);
+        ctx.stroke();
+        ctx.fillStyle = "#FF4500";
+        ctx.beginPath();
+        ctx.arc(JUDGEMENT_LINE_X, canvas.height / 2, 20, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function drawNote(note) {
+        // Draw ledger lines if necessary
+        const lineSpacing = 20;
+        const staffTop = getNoteInfo(77).y; // F5 line
+        const staffBottom = getNoteInfo(64).y; // E4 line
+
+        ctx.save();
+        ctx.strokeStyle = "#374151";
+        ctx.lineWidth = 2;
+        // Ledger lines below the staff
+        if (note.y > staffBottom) {
+          for (
+            let y = staffBottom + lineSpacing;
+            y <= note.y + 1;
+            y += lineSpacing
+          ) {
+            ctx.beginPath();
+            ctx.moveTo(note.x - 20, y);
+            ctx.lineTo(note.x + 20, y);
+            ctx.stroke();
+          }
+        }
+        // Ledger lines above the staff
+        if (note.y < staffTop) {
+          for (
+            let y = staffTop - lineSpacing;
+            y >= note.y - 1;
+            y -= lineSpacing
+          ) {
+            ctx.beginPath();
+            ctx.moveTo(note.x - 20, y);
+            ctx.lineTo(note.x + 20, y);
+            ctx.stroke();
+          }
+        }
+        ctx.restore();
+
+        // ノーツを黒い楕円に変更
+        ctx.fillStyle = "#1f2937";
+        ctx.strokeStyle = "#1f2937";
+        ctx.lineWidth = 2;
+
+        ctx.beginPath();
+        ctx.ellipse(note.x, note.y, 14, 10, -0.3, 0, Math.PI * 2); // 楕円を描画
+        ctx.fill();
+
+        // 判定後の色付け
+        if (note.judged) {
+          ctx.fillStyle = note.correct
+            ? "rgba(34, 197, 94, 0.7)"
+            : "rgba(239, 68, 68, 0.7)";
+          ctx.beginPath();
+          ctx.ellipse(note.x, note.y, 16, 12, -0.3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      function drawTextEffects() {
+        ctx.font = 'bold 30px "Noto Sans JP", sans-serif';
+        ctx.textAlign = "center";
+        textEffects.forEach((effect) => {
+          ctx.save();
+          ctx.fillStyle = effect.color;
+          ctx.globalAlpha = Math.max(0, effect.life / 60);
+          ctx.fillText(effect.text, effect.x, effect.y);
+          ctx.restore();
+        });
+      }
+
+      function drawHighlights() {
+        highlightEffects.forEach((effect) => {
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, effect.life / 30) * 0.8;
+          ctx.fillStyle = "#ffc107";
+          ctx.shadowColor = "#ffc107";
+          ctx.shadowBlur = 15;
+          ctx.beginPath();
+          ctx.arc(JUDGEMENT_LINE_X, effect.y, 12, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        });
+      }
+
+      // --- ゲームロジック ---
+      function generateNote() {
+        if (!gameRunning || score.total >= GAME_LENGTH) return;
+        const scaleNotes = SCALES[currentKeyName].notes;
+        const baseNote =
+          scaleNotes[Math.floor(Math.random() * scaleNotes.length)];
+        // C4 to G5 range is midi 60 to 79. Let's find an octave that puts the note in range.
+        let midiNote = baseNote;
+        while (midiNote < 60) {
+          midiNote += 12;
+        }
+        while (midiNote > 79) {
+          midiNote -= 12;
+        }
+        // If it's still out of range, try another octave.
+        if (midiNote < 60 || midiNote > 79) {
+          midiNote = baseNote + 12;
+          if (midiNote < 60 || midiNote > 79) {
+            midiNote = baseNote - 12;
+            if (midiNote < 60 || midiNote > 79) {
+              midiNote = 60; // Default to C4 if all else fails
+            }
+          }
+        }
+
+        const pitch = getNoteInfo(midiNote, currentKeyName);
+        notesOnScreen.push({
+          x: canvas.width + 20,
+          y: pitch.y,
+          pitch: pitch,
+          id: Date.now() + Math.random(),
+          judged: false,
+          missed: false,
+        });
+      }
+
+      let noteGeneratorInterval;
+      function gameLoop() {
+        if (!gameRunning) return;
+        notesOnScreen.forEach((note) => {
+          note.x -= noteSpeed;
+          if (
+            note.x < JUDGEMENT_LINE_X - JUDGEMENT_AREA_WIDTH &&
+            !note.judged &&
+            !note.missed
+          ) {
+            note.missed = true;
+            showResult(false, note);
+          }
+        });
+
+        textEffects.forEach((e) => {
+          e.life--;
+          e.y -= 0.5;
+        });
+        textEffects = textEffects.filter((e) => e.life > 0);
+        highlightEffects.forEach((e) => e.life--);
+        highlightEffects = highlightEffects.filter((e) => e.life > 0);
+        notesOnScreen = notesOnScreen.filter((note) => note.x > -20);
+
+        draw();
+        requestAnimationFrame(gameLoop);
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawStaff();
+        drawHighlights();
+        notesOnScreen.forEach(drawNote);
+        drawTextEffects();
+      }
+
+      function startGame() {
+        if (gameRunning) return;
+        currentKeyName =
+          KEY_NAMES[Math.floor(Math.random() * KEY_NAMES.length)];
+        keyDisplay.textContent = `キー: ${currentKeyName}`;
+
+        gameRunning = true;
+        notesOnScreen = [];
+        textEffects = [];
+        highlightEffects = [];
+        score = { correct: 0, total: 0 };
+        updateScore();
+        if (noteGeneratorInterval) clearInterval(noteGeneratorInterval);
+        noteGeneratorInterval = setInterval(
+          generateNote,
+          NOTE_GENERATION_INTERVAL / noteSpeed
+        );
+
+        gameLoop();
+      }
+
+      function stopGame() {
+        gameRunning = false;
+        clearInterval(noteGeneratorInterval);
+      }
+
+      function endGame() {
+        stopGame();
+        finalScoreSpan.textContent = score.correct;
+        gameOverScreen.classList.remove("hidden");
+        gameOverScreen.classList.add("flex");
+      }
+
+      function restartGame() {
+        gameOverScreen.classList.add("hidden");
+        gameOverScreen.classList.remove("flex");
+        startGame();
+      }
+
+      function showResult(correct, note) {
+        score.total++;
+        let effectColor;
+        if (correct) {
+          score.correct++;
+          resultDisplay.textContent = "良";
+          resultDisplay.className =
+            "absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 text-8xl font-bold text-yellow-400 result-animation";
+          effectColor = "#ffc107";
+        } else {
+          resultDisplay.textContent = "不可";
+          resultDisplay.className =
+            "absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 text-8xl font-bold text-red-500 result-animation";
+          effectColor = "#ef4444";
+        }
+        if (note) {
+          textEffects.push({
+            text: note.pitch.name,
+            x: note.x,
+            y: note.y - 30,
+            life: 60,
+            color: effectColor,
+          });
+        }
+        updateScore();
+        setTimeout(() => {
+          resultDisplay.textContent = "";
+        }, 800);
+        if (score.total >= GAME_LENGTH) {
+          endGame();
+        }
+      }
+
+      function updateScore() {
+        correctCountSpan.textContent = score.correct;
+        totalCountSpan.textContent = score.total;
+        const accuracy =
+          score.total === 0
+            ? 0
+            : Math.round((score.correct / score.total) * 100);
+        accuracySpan.textContent = accuracy;
+      }
+
+      // --- Web Audio ---
+      function initAudio() {
+        if (!audioCtx) {
+          try {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          } catch (e) {
+            console.error("Web Audio API is not supported.");
+          }
+        }
+      }
+
+      function playNoteSound(midiNote, duration = 1.5) {
+        if (!audioCtx) return;
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        const freq = 440 * 2 ** ((midiNote - 69) / 12);
+        oscillator.type = "triangle";
+        oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+        const now = audioCtx.currentTime;
+        gainNode.gain.cancelScheduledValues(now);
+        gainNode.gain.setValueAtTime(0, now);
+        // Attack
+        gainNode.gain.linearRampToValueAtTime(volume, now + 0.02);
+        // Decay and Sustain
+        gainNode.gain.exponentialRampToValueAtTime(volume * 0.5, now + 0.2);
+        // Release
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+        oscillator.start(now);
+        oscillator.stop(now + duration);
+      }
+
+      // --- Web Bluetooth MIDI ---
+      connectButton.addEventListener("click", async () => {
+        initAudio(); // Initialize audio on user interaction
+        if (!navigator.bluetooth) {
+          statusDisplay.textContent =
+            "Web Bluetooth APIはこのブラウザではサポートされていません。";
+          statusDisplay.className =
+            "text-center md:text-left text-red-800 bg-red-100 px-4 py-2 rounded-md text-sm";
+          return;
+        }
+        try {
+          statusDisplay.textContent = "Bluetooth MIDIデバイスをスキャン中...";
+          statusDisplay.className =
+            "text-center md:text-left text-blue-800 bg-blue-100 px-4 py-2 rounded-md text-sm";
+          const device = await navigator.bluetooth.requestDevice({
+            filters: [{ services: ["03b80e5a-ede8-4b33-a751-6ce34ec4c700"] }],
+          });
+          statusDisplay.textContent = `デバイス [${device.name}] に接続中...`;
+          device.addEventListener("gattserverdisconnected", onDisconnected);
+          const server = await device.gatt.connect();
+          const service = await server.getPrimaryService(
+            "03b80e5a-ede8-4b33-a751-6ce34ec4c700"
+          );
+          const characteristic = await service.getCharacteristic(
+            "7772e5db-3868-4112-a1a9-f2669d106bf3"
+          );
+          await characteristic.startNotifications();
+          characteristic.addEventListener(
+            "characteristicvaluechanged",
+            handleCharacteristicValueChanged
+          );
+          statusDisplay.textContent = `接続成功: [${device.name}]。演奏を開始してください！`;
+          statusDisplay.className =
+            "text-center md:text-left text-green-800 bg-green-100 px-4 py-2 rounded-md text-sm";
+          if (!gameRunning) startGame();
+        } catch (error) {
+          console.error("Bluetooth接続エラー:", error);
+          statusDisplay.textContent =
+            "Bluetooth接続に失敗しました: " + error.message;
+          statusDisplay.className =
+            "text-center md:text-left text-red-800 bg-red-100 px-4 py-2 rounded-md text-sm";
+          if (gameRunning) stopGame();
+        }
+      });
+
+      function onDisconnected(event) {
+        const device = event.target;
+        statusDisplay.textContent = `デバイス [${device.name}] との接続が切れました。`;
+        statusDisplay.className =
+          "text-center md:text-left text-yellow-800 bg-yellow-100 px-4 py-2 rounded-md text-sm";
+        if (gameRunning) stopGame();
+      }
+
+      function handleCharacteristicValueChanged(event) {
+        const value = event.target.value;
+        if (value.byteLength < 3) return;
+        const status = value.getUint8(2);
+        if ((status & 0xf0) === 0x90) {
+          // Note On
+          const velocity = value.getUint8(4);
+          if (velocity > 0) {
+            const noteNumber = value.getUint8(3);
+            onMidiNoteOn(noteNumber);
+          }
+        }
+      }
+
+      function onMidiNoteOn(noteNumber) {
+        playNoteSound(noteNumber);
+        const pitchInfo = getNoteInfo(noteNumber, currentKeyName);
+        if (pitchInfo) {
+          highlightEffects.push({ y: pitchInfo.y, life: 30 });
+        }
+        handleKeyPress(noteNumber);
+      }
+
+      function handleKeyPress(noteNumber) {
+        if (!gameRunning) return;
+        const targetNote = notesOnScreen.find(
+          (note) =>
+            !note.judged &&
+            note.x > JUDGEMENT_LINE_X - JUDGEMENT_AREA_WIDTH &&
+            note.x < JUDGEMENT_LINE_X + JUDGEMENT_AREA_WIDTH
+        );
+        if (targetNote) {
+          targetNote.judged = true;
+          const correct = targetNote.pitch.note === noteNumber;
+          targetNote.correct = correct;
+          showResult(correct, targetNote);
+        }
+      }
+
+      // --- 初期化処理 ---
+      speedSlider.addEventListener("input", (e) => {
+        noteSpeed = parseFloat(e.target.value);
+        speedValueSpan.textContent = noteSpeed.toFixed(1);
+        if (gameRunning) {
+          clearInterval(noteGeneratorInterval);
+          noteGeneratorInterval = setInterval(
+            generateNote,
+            NOTE_GENERATION_INTERVAL / noteSpeed
+          );
+        }
+      });
+      volumeSlider.addEventListener("input", (e) => {
+        volume = parseFloat(e.target.value);
+        volumeValueSpan.textContent = volume.toFixed(2);
+      });
+      window.addEventListener("resize", resizeCanvas);
+      restartButton.addEventListener("click", restartGame);
+
+      // --- 初期描画 ---
+      resizeCanvas();
+      draw();
+    </script>
+  </body>
+</html>
