@@ -39,6 +39,38 @@
       #game-over-screen {
         background-color: rgba(0, 0, 0, 0.85); /* より濃いオーバーレイ */
       }
+      .white-key {
+        border: 1px solid #9ca3af;
+        background-color: white;
+        position: absolute;
+        bottom: 0;
+        cursor: pointer;
+        transition: background-color 0.1s;
+        border-radius: 0 0 5px 5px;
+      }
+      .white-key:hover {
+        background-color: #e5e7eb;
+      }
+      .white-key.active {
+        background-color: #d1d5db;
+      }
+
+      .black-key {
+        background-color: #1f2937;
+        position: absolute;
+        top: 0;
+        z-index: 10;
+        cursor: pointer;
+        transition: background-color 0.1s;
+        border-radius: 0 0 5px 5px;
+        border: 2px solid #4b5563;
+      }
+      .black-key:hover {
+        background-color: #374151;
+      }
+      .black-key.active {
+        background-color: #111827;
+      }
     </style>
   </head>
   <body
@@ -157,6 +189,8 @@
           </button>
         </div>
       </div>
+
+      <div id="piano-keyboard" class="w-full h-40 relative mt-6"></div>
     </div>
 
     <script>
@@ -229,22 +263,31 @@
 
       const SCALES = {
         "C Major": {
-          notes: [48, 50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67],
+          notes: [
+            48, 50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67, 69, 71, 72, 74, 76,
+            77, 79,
+          ],
           signature: [],
         },
         "G Major": {
-          notes: [55, 57, 59, 60, 62, 64, 66],
+          notes: [55, 57, 59, 60, 62, 64, 66, 67, 69, 71, 72, 74, 76, 78, 79],
           signature: [{ midi: 77, type: "♯" }],
         }, // F#
         "D Major": {
-          notes: [50, 52, 54, 55, 57, 59, 61],
+          notes: [
+            50, 52, 54, 55, 57, 59, 61, 62, 64, 66, 67, 69, 71, 73, 74, 76, 78,
+            79,
+          ],
           signature: [
             { midi: 77, type: "♯" },
             { midi: 72, type: "♯" },
           ],
         }, // F#, C#
         "A Major": {
-          notes: [49, 51, 53, 54, 56, 58, 60],
+          notes: [
+            49, 51, 53, 54, 56, 58, 60, 61, 63, 65, 66, 68, 70, 72, 73, 75, 77,
+            78,
+          ],
           signature: [
             { midi: 77, type: "♯" },
             { midi: 72, type: "♯" },
@@ -252,7 +295,9 @@
           ],
         }, // F#, C#, G#
         "E Major": {
-          notes: [52, 54, 56, 57, 59, 61, 63],
+          notes: [
+            52, 54, 56, 57, 59, 61, 63, 64, 66, 68, 69, 71, 73, 75, 76, 78,
+          ],
           signature: [
             { midi: 77, type: "♯" },
             { midi: 72, type: "♯" },
@@ -261,7 +306,10 @@
           ],
         }, // F#, C#, G#, D#
         "B Major": {
-          notes: [49, 51, 52, 54, 56, 58, 59],
+          notes: [
+            49, 51, 52, 54, 56, 58, 59, 61, 63, 64, 66, 68, 70, 71, 73, 75, 76,
+            78,
+          ],
           signature: [
             { midi: 77, type: "♯" },
             { midi: 72, type: "♯" },
@@ -271,18 +319,22 @@
           ],
         }, // F#, C#, G#, D#, A#
         "F Major": {
-          notes: [53, 55, 57, 58, 60, 62, 64],
+          notes: [53, 55, 57, 58, 60, 62, 64, 65, 67, 69, 70, 72, 74, 75, 77],
           signature: [{ midi: 71, type: "♭" }],
         }, // Bb
         "Bb Major": {
-          notes: [50, 52, 53, 55, 57, 58, 60],
+          notes: [
+            50, 52, 53, 55, 57, 58, 60, 62, 63, 65, 67, 69, 70, 72, 74, 75, 77,
+          ],
           signature: [
             { midi: 71, type: "♭" },
             { midi: 76, type: "♭" },
           ],
         }, // Bb, Eb
         "Eb Major": {
-          notes: [51, 53, 55, 56, 58, 60, 62],
+          notes: [
+            51, 53, 55, 56, 58, 60, 62, 63, 65, 67, 68, 70, 72, 73, 75, 77,
+          ],
           signature: [
             { midi: 71, type: "♭" },
             { midi: 76, type: "♭" },
@@ -290,7 +342,9 @@
           ],
         }, // Bb, Eb, Ab
         "Ab Major": {
-          notes: [48, 50, 51, 53, 55, 57, 58],
+          notes: [
+            48, 50, 51, 53, 55, 57, 58, 60, 61, 63, 65, 67, 68, 70, 72, 73, 75,
+          ],
           signature: [
             { midi: 71, type: "♭" },
             { midi: 76, type: "♭" },
@@ -299,7 +353,9 @@
           ],
         }, // Bb, Eb, Ab, Db
         "Db Major": {
-          notes: [49, 51, 53, 54, 56, 58, 60],
+          notes: [
+            49, 51, 53, 54, 56, 58, 60, 61, 63, 65, 66, 68, 70, 71, 73, 75,
+          ],
           signature: [
             { midi: 71, type: "♭" },
             { midi: 76, type: "♭" },
@@ -370,13 +426,13 @@
 
         // 調号の描画
         const signature = SCALES[currentKeyName].signature;
-        ctx.font = "50px serif";
+        ctx.font = "45px serif"; // サイズを小さくする
         ctx.textBaseline = "middle";
         let xPos = 10 + clefMetrics.width + 15; // ト音記号の幅を考慮して動的に配置
         signature.forEach((accidental) => {
           const noteInfo = getNoteInfo(accidental.midi);
           ctx.fillText(accidental.type, xPos, noteInfo.y);
-          xPos += 25;
+          xPos += 20; // X方向の間隔を少し詰める
         });
         ctx.textBaseline = "alphabetic"; // Reset baseline
 
@@ -482,21 +538,27 @@
         const scaleNotes = SCALES[currentKeyName].notes;
         const baseNote =
           scaleNotes[Math.floor(Math.random() * scaleNotes.length)];
-        // C4 to G5 range is midi 60 to 79. Let's find an octave that puts the note in range.
+
         let midiNote = baseNote;
         while (midiNote < 60) {
           midiNote += 12;
-        }
+        } // C4未満ならオクターブ上げる
         while (midiNote > 79) {
           midiNote -= 12;
-        }
-        // If it's still out of range, try another octave.
+        } // G5より高いならオクターブ下げる
+
+        // それでも範囲外の場合、別のオクターブを試す
         if (midiNote < 60 || midiNote > 79) {
           midiNote = baseNote + 12;
           if (midiNote < 60 || midiNote > 79) {
             midiNote = baseNote - 12;
             if (midiNote < 60 || midiNote > 79) {
-              midiNote = 60; // Default to C4 if all else fails
+              // どうしても範囲に入らない音(e.g. Ab MajorのDb)は、オクターブ調整して入れる
+              midiNote = baseNote + 24;
+              while (midiNote > 79) {
+                midiNote -= 12;
+              }
+              if (midiNote < 60) midiNote = 60; // 最終手段
             }
           }
         }
@@ -758,6 +820,80 @@
         }
       }
 
+      // --- 画面キーボード ---
+      function createPianoKeyboard() {
+        const keyboardContainer = document.getElementById("piano-keyboard");
+        if (!keyboardContainer) return;
+        keyboardContainer.innerHTML = ""; // Clear previous keys
+        const noteRange = { start: 60, end: 79 }; // C4 to G5
+        const isBlackKey = [
+          false,
+          true,
+          false,
+          true,
+          false,
+          false,
+          true,
+          false,
+          true,
+          false,
+          true,
+          false,
+        ];
+
+        const whiteKeyNotes = Array.from(
+          { length: noteRange.end - noteRange.start + 1 },
+          (_, i) => noteRange.start + i
+        ).filter((note) => !isBlackKey[note % 12]);
+        const whiteKeyCount = whiteKeyNotes.length;
+
+        const whiteKeyWidth = 100 / whiteKeyCount;
+        let whiteKeyIndex = 0;
+
+        for (
+          let midiNote = noteRange.start;
+          midiNote <= noteRange.end;
+          midiNote++
+        ) {
+          const key = document.createElement("div");
+          key.dataset.note = midiNote;
+          const isBlack = isBlackKey[midiNote % 12];
+
+          if (isBlack) {
+            key.className = "black-key";
+            key.style.width = `${whiteKeyWidth * 0.6}%`;
+            key.style.height = "60%";
+            key.style.left = `${(whiteKeyIndex - 0.3) * whiteKeyWidth}%`;
+          } else {
+            key.className = "white-key";
+            key.style.width = `${whiteKeyWidth}%`;
+            key.style.height = "100%";
+            key.style.left = `${whiteKeyIndex * whiteKeyWidth}%`;
+            whiteKeyIndex++;
+          }
+
+          const handlePress = (e) => {
+            e.preventDefault();
+            initAudio(); // Make sure audio context is ready
+            if (!gameRunning) startGame(); // Start game on first click if not running
+            onMidiNoteOn(midiNote);
+            key.classList.add("active");
+          };
+
+          const handleRelease = () => {
+            key.classList.remove("active");
+          };
+
+          key.addEventListener("mousedown", handlePress);
+          key.addEventListener("mouseup", handleRelease);
+          key.addEventListener("mouseleave", handleRelease);
+          key.addEventListener("touchstart", handlePress, { passive: false });
+          key.addEventListener("touchend", handleRelease);
+
+          keyboardContainer.appendChild(key);
+        }
+      }
+
       // --- 初期化処理 ---
       speedSlider.addEventListener("input", (e) => {
         noteSpeed = parseFloat(e.target.value);
@@ -774,11 +910,15 @@
         volume = parseFloat(e.target.value);
         volumeValueSpan.textContent = volume.toFixed(2);
       });
-      window.addEventListener("resize", resizeCanvas);
+      window.addEventListener("resize", () => {
+        resizeCanvas();
+        createPianoKeyboard();
+      });
       restartButton.addEventListener("click", restartGame);
 
       // --- 初期描画 ---
       resizeCanvas();
+      createPianoKeyboard();
       draw();
     </script>
   </body>
