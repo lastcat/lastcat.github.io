@@ -71,6 +71,12 @@
       .black-key.active {
         background-color: #111827;
       }
+
+      .difficulty-btn.active {
+        background-color: #3b82f6;
+        color: white;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+      }
     </style>
   </head>
   <body
@@ -97,6 +103,20 @@
           Bluetooth MIDIに接続
         </button>
         <div class="flex items-center gap-4 flex-wrap justify-center">
+          <div class="flex items-center gap-2 bg-gray-200 p-1 rounded-lg">
+            <button
+              data-difficulty="Easy"
+              class="difficulty-btn active px-3 py-1 text-sm font-semibold rounded-md transition-colors"
+            >
+              Easy
+            </button>
+            <button
+              data-difficulty="Normal"
+              class="difficulty-btn px-3 py-1 text-sm font-semibold rounded-md transition-colors"
+            >
+              Normal
+            </button>
+          </div>
           <div class="flex items-center gap-2">
             <label for="speed-slider" class="text-sm font-medium text-gray-700"
               >速さ:</label
@@ -135,18 +155,28 @@
               >0.40</span
             >
           </div>
-          <div
-            id="key-display"
-            class="text-sm font-semibold text-gray-700 bg-blue-100 px-3 py-1 rounded-md"
-          >
-            キー: C Major
-          </div>
         </div>
         <div
           id="status"
           class="text-center md:text-left text-blue-800 bg-blue-100 px-4 py-2 rounded-md text-sm"
         >
           接続待機中...
+        </div>
+      </div>
+      <div class="flex justify-between items-center mb-2 px-2">
+        <div class="flex items-center gap-4">
+          <div
+            id="key-display"
+            class="text-lg font-semibold text-gray-700 bg-blue-100 px-3 py-1 rounded-md"
+          >
+            キー: C Major
+          </div>
+          <div
+            id="chord-display"
+            class="text-lg font-bold text-indigo-600 hidden"
+          >
+            コード: C
+          </div>
         </div>
         <div id="score" class="text-xl font-semibold text-gray-700">
           スコア: <span id="correct-count">0</span> /
@@ -179,7 +209,8 @@
             ゲーム終了！
           </h2>
           <p class="text-2xl mb-8" style="color: #fff">
-            スコア: <span id="final-score">0</span> / 10
+            スコア: <span id="final-score">0</span> /
+            <span id="final-max-score">10</span>
           </p>
           <button
             id="restart-button"
@@ -205,16 +236,19 @@
       const accuracySpan = document.getElementById("accuracy");
       const gameOverScreen = document.getElementById("game-over-screen");
       const finalScoreSpan = document.getElementById("final-score");
+      const finalMaxScoreSpan = document.getElementById("final-max-score");
       const restartButton = document.getElementById("restart-button");
       const speedSlider = document.getElementById("speed-slider");
       const speedValueSpan = document.getElementById("speed-value");
       const volumeSlider = document.getElementById("volume-slider");
       const volumeValueSpan = document.getElementById("volume-value");
       const keyDisplay = document.getElementById("key-display");
+      const chordDisplay = document.getElementById("chord-display");
+      const difficultyButtons = document.querySelectorAll(".difficulty-btn");
 
       // --- ゲームの状態管理 ---
       let notesOnScreen = [];
-      let score = { correct: 0, total: 0 };
+      let score = { correct: 0, total: 0, max: 10 };
       let gameRunning = false;
       let textEffects = [];
       let highlightEffects = [];
@@ -222,14 +256,19 @@
       let volume = 0.4;
       let audioCtx;
       let currentKeyName = "C Major";
+      let difficulty = "Easy";
+      let currentProgression = [];
+      let currentChordIndex = 0;
+      let currentNoteInChordIndex = 0; // Normalモードでコード内の何番目の音かを管理
 
       // --- 定数設定 ---
-      const NOTE_GENERATION_INTERVAL = 2000;
-      const GAME_LENGTH = 10;
+      const EASY_GAME_LENGTH = 10;
+      const NORMAL_GAME_CHORDS = 4;
+      const NOTE_GENERATION_INTERVAL = 2000; // 1つのコードあたりの時間
       const JUDGEMENT_LINE_X = canvas.width / 3;
       const JUDGEMENT_AREA_WIDTH = 40;
-      const C4_Y = 140; // MIDI note 60 (Middle C) on its ledger line
-      const Y_STEP = 10; // Space between lines/spaces on the staff
+      const C4_Y = 140; // MIDI note 60 (Middle C)
+      const Y_STEP = 10; // 五線譜の線/間の間隔
 
       const noteBaseSteps = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
       const jaNoteNamesSharp = [
@@ -273,6 +312,21 @@
             { midi: 71, step: 6 },
           ],
           signature: [],
+          chords: {
+            I: { name: "C", notes: [60, 64, 67] },
+            ii: { name: "Dm", notes: [62, 65, 69] },
+            iii: { name: "Em", notes: [64, 67, 71] },
+            IV: { name: "F", notes: [65, 69, 72] },
+            V: { name: "G", notes: [67, 71, 74] },
+            vi: { name: "Am", notes: [69, 72, 76] },
+            "vii°": { name: "Bdim", notes: [71, 74, 77] },
+          },
+          progressions: [
+            ["I", "V", "vi", "IV"],
+            ["I", "IV", "V", "I"],
+            ["vi", "IV", "I", "V"],
+            ["I", "V_inv1", "vi", "IV_inv2"], // 展開形を含む進行
+          ],
         },
         "G Major": {
           notes: [
@@ -285,73 +339,22 @@
             { midi: 66, step: 3 },
           ],
           signature: [{ midi: 77, type: "♯" }],
-        }, // G3-F#4
-        "D Major": {
-          notes: [
-            { midi: 50, step: 1 },
-            { midi: 52, step: 2 },
-            { midi: 54, step: 3 },
-            { midi: 55, step: 4 },
-            { midi: 57, step: 5 },
-            { midi: 59, step: 6 },
-            { midi: 61, step: 0 },
+          chords: {
+            I: { name: "G", notes: [55, 59, 62] },
+            ii: { name: "Am", notes: [57, 60, 64] },
+            iii: { name: "Bm", notes: [59, 62, 66] },
+            IV: { name: "C", notes: [60, 64, 67] },
+            V: { name: "D", notes: [62, 66, 69] },
+            vi: { name: "Em", notes: [64, 67, 71] },
+            "vii°": { name: "F#dim", notes: [66, 69, 72] },
+          },
+          progressions: [
+            ["I", "V", "vi", "IV"],
+            ["I", "IV", "V", "I"],
+            ["vi", "IV", "I", "V"],
+            ["I", "V_inv1", "vi", "IV"], // 展開形を含む進行
           ],
-          signature: [
-            { midi: 77, type: "♯" },
-            { midi: 72, type: "♯" },
-          ],
-        }, // D3-C#4
-        "A Major": {
-          notes: [
-            { midi: 57, step: 5 },
-            { midi: 59, step: 6 },
-            { midi: 61, step: 0 },
-            { midi: 62, step: 1 },
-            { midi: 64, step: 2 },
-            { midi: 66, step: 3 },
-            { midi: 68, step: 4 },
-          ],
-          signature: [
-            { midi: 77, type: "♯" },
-            { midi: 72, type: "♯" },
-            { midi: 79, type: "♯" },
-          ],
-        }, // A3-G#4
-        "E Major": {
-          notes: [
-            { midi: 52, step: 2 },
-            { midi: 54, step: 3 },
-            { midi: 56, step: 4 },
-            { midi: 57, step: 5 },
-            { midi: 59, step: 6 },
-            { midi: 61, step: 0 },
-            { midi: 63, step: 1 },
-          ],
-          signature: [
-            { midi: 77, type: "♯" },
-            { midi: 72, type: "♯" },
-            { midi: 79, type: "♯" },
-            { midi: 74, type: "♯" },
-          ],
-        }, // E3-D#4
-        "B Major": {
-          notes: [
-            { midi: 59, step: 6 },
-            { midi: 61, step: 0 },
-            { midi: 63, step: 1 },
-            { midi: 64, step: 2 },
-            { midi: 66, step: 3 },
-            { midi: 68, step: 4 },
-            { midi: 70, step: 5 },
-          ],
-          signature: [
-            { midi: 77, type: "♯" },
-            { midi: 72, type: "♯" },
-            { midi: 79, type: "♯" },
-            { midi: 74, type: "♯" },
-            { midi: 69, type: "♯" },
-          ],
-        }, // B3-A#4
+        },
         "F Major": {
           notes: [
             { midi: 53, step: 3 },
@@ -363,73 +366,22 @@
             { midi: 64, step: 2 },
           ],
           signature: [{ midi: 71, type: "♭" }],
-        }, // F3-E4
-        "Bb Major": {
-          notes: [
-            { midi: 58, step: 6 },
-            { midi: 60, step: 0 },
-            { midi: 62, step: 1 },
-            { midi: 63, step: 2 },
-            { midi: 65, step: 3 },
-            { midi: 67, step: 4 },
-            { midi: 69, step: 5 },
+          chords: {
+            I: { name: "F", notes: [53, 57, 60] },
+            ii: { name: "Gm", notes: [55, 58, 62] },
+            iii: { name: "Am", notes: [57, 60, 64] },
+            IV: { name: "Bb", notes: [58, 62, 65] },
+            V: { name: "C", notes: [60, 64, 67] },
+            vi: { name: "Dm", notes: [62, 65, 69] },
+            "vii°": { name: "Edim", notes: [64, 67, 70] },
+          },
+          progressions: [
+            ["I", "V", "vi", "IV"],
+            ["I", "IV", "V", "I"],
+            ["vi", "IV", "I", "V"],
+            ["IV", "V", "I_inv1", "vi"], // 展開形を含む進行
           ],
-          signature: [
-            { midi: 71, type: "♭" },
-            { midi: 76, type: "♭" },
-          ],
-        }, // Bb3-A4
-        "Eb Major": {
-          notes: [
-            { midi: 51, step: 2 },
-            { midi: 53, step: 3 },
-            { midi: 55, step: 4 },
-            { midi: 56, step: 5 },
-            { midi: 58, step: 6 },
-            { midi: 60, step: 0 },
-            { midi: 62, step: 1 },
-          ],
-          signature: [
-            { midi: 71, type: "♭" },
-            { midi: 76, type: "♭" },
-            { midi: 69, type: "♭" },
-          ],
-        }, // Eb3-D4
-        "Ab Major": {
-          notes: [
-            { midi: 56, step: 5 },
-            { midi: 58, step: 6 },
-            { midi: 60, step: 0 },
-            { midi: 61, step: 1 },
-            { midi: 63, step: 2 },
-            { midi: 65, step: 3 },
-            { midi: 67, step: 4 },
-          ],
-          signature: [
-            { midi: 71, type: "♭" },
-            { midi: 76, type: "♭" },
-            { midi: 69, type: "♭" },
-            { midi: 74, type: "♭" },
-          ],
-        }, // Ab3-G4
-        "Db Major": {
-          notes: [
-            { midi: 49, step: 1 },
-            { midi: 51, step: 2 },
-            { midi: 53, step: 3 },
-            { midi: 54, step: 4 },
-            { midi: 56, step: 5 },
-            { midi: 58, step: 6 },
-            { midi: 60, step: 0 },
-          ],
-          signature: [
-            { midi: 71, type: "♭" },
-            { midi: 76, type: "♭" },
-            { midi: 69, type: "♭" },
-            { midi: 74, type: "♭" },
-            { midi: 67, type: "♭" },
-          ],
-        }, // Db3-C4
+        },
       };
       const KEY_NAMES = Object.keys(SCALES);
 
@@ -450,6 +402,53 @@
         return { note: midiNote, y: y, name: name };
       }
 
+      /**
+       * コード進行のローマ数字から、展開形を考慮したコードオブジェクトを生成する
+       * @param {string} keyName - 現在のキー名 ("C Major"など)
+       * @param {string} romanWithInversion - 展開情報を含むローマ数字 ("V_inv1"など)
+       * @returns {{name: string, notes: number[]}|null} - コード名とMIDIノート配列を持つオブジェクト
+       */
+      function getChordFromProgression(keyName, romanWithInversion) {
+        let roman = romanWithInversion;
+        let inversion = 0;
+
+        if (roman.includes("_inv1")) {
+          inversion = 1;
+          roman = roman.replace("_inv1", "");
+        } else if (roman.includes("_inv2")) {
+          inversion = 2;
+          roman = roman.replace("_inv2", "");
+        }
+
+        const originalChord = SCALES[keyName].chords[roman];
+        if (!originalChord) return null;
+
+        let finalChord = {
+          name: originalChord.name,
+          notes: [...originalChord.notes],
+        };
+
+        const keyUsesFlats =
+          keyName.includes("b") || keyName.includes("F Major");
+        const noteNames = keyUsesFlats ? jaNoteNamesFlat : jaNoteNamesSharp;
+
+        if (inversion === 1 && finalChord.notes.length > 1) {
+          const root = finalChord.notes.shift();
+          finalChord.notes.push(root + 12);
+          const bassNoteName = noteNames[finalChord.notes[0] % 12];
+          finalChord.name = `${originalChord.name}/${bassNoteName}`;
+        } else if (inversion === 2 && finalChord.notes.length > 2) {
+          const root = finalChord.notes.shift();
+          const third = finalChord.notes.shift();
+          finalChord.notes.push(root + 12, third + 12);
+          const bassNoteName = noteNames[finalChord.notes[0] % 12];
+          finalChord.name = `${originalChord.name}/${bassNoteName}`;
+        }
+
+        finalChord.notes.sort((a, b) => a - b);
+        return finalChord;
+      }
+
       // --- Canvasのサイズ調整 ---
       function resizeCanvas() {
         const parent = canvas.parentElement;
@@ -465,7 +464,6 @@
 
       // --- 描画関連 ---
       function drawStaff() {
-        // 五線譜の線のY座標をgetNoteInfoから計算して、音符のY座標と一致させる
         const staffLineMidiNotes = [64, 67, 71, 74, 77]; // E4, G4, B4, D5, F5
         const staffLinesY = staffLineMidiNotes.map(
           (midi) => getNoteInfo(midi).y
@@ -480,29 +478,26 @@
           ctx.stroke();
         });
 
-        // G-clef (ト音記号) の描画。G4の線(下から2番目)を基準に配置
         const G4_Y = staffLinesY[1];
         ctx.font = "120px serif";
         ctx.fillStyle = "#374151";
         ctx.textBaseline = "middle";
-        ctx.fillText("𝄞", 10, G4_Y + 10); // Y座標を微調整して中央に
-        ctx.textBaseline = "alphabetic"; // ベースラインを元に戻す
+        ctx.fillText("𝄞", 10, G4_Y + 10);
+        ctx.textBaseline = "alphabetic";
 
         const clefMetrics = ctx.measureText("𝄞");
 
-        // 調号の描画
         const signature = SCALES[currentKeyName].signature;
-        ctx.font = "45px serif"; // サイズを小さくする
+        ctx.font = "45px serif";
         ctx.textBaseline = "middle";
-        let xPos = 10 + clefMetrics.width + 15; // ト音記号の幅を考慮して動的に配置
+        let xPos = 10 + clefMetrics.width + 15;
         signature.forEach((accidental) => {
           const noteInfo = getNoteInfo(accidental.midi);
           ctx.fillText(accidental.type, xPos, noteInfo.y);
-          xPos += 20; // X方向の間隔を少し詰める
+          xPos += 20;
         });
-        ctx.textBaseline = "alphabetic"; // Reset baseline
+        ctx.textBaseline = "alphabetic";
 
-        // 判定ラインの描画
         ctx.strokeStyle = "#FF4500";
         ctx.lineWidth = 8;
         ctx.beginPath();
@@ -516,15 +511,12 @@
       }
 
       function drawNote(note) {
-        // Draw ledger lines if necessary
         const lineSpacing = 20;
-        const staffTop = getNoteInfo(77).y; // F5 line
-        const staffBottom = getNoteInfo(64).y; // E4 line
-
+        const staffTop = getNoteInfo(77).y;
+        const staffBottom = getNoteInfo(64).y;
         ctx.save();
         ctx.strokeStyle = "#374151";
         ctx.lineWidth = 2;
-        // Ledger lines below the staff
         if (note.y > staffBottom) {
           for (
             let y = staffBottom + lineSpacing;
@@ -537,7 +529,6 @@
             ctx.stroke();
           }
         }
-        // Ledger lines above the staff
         if (note.y < staffTop) {
           for (
             let y = staffTop - lineSpacing;
@@ -552,16 +543,14 @@
         }
         ctx.restore();
 
-        // ノーツを黒い楕円に変更
         ctx.fillStyle = "#1f2937";
         ctx.strokeStyle = "#1f2937";
         ctx.lineWidth = 2;
 
         ctx.beginPath();
-        ctx.ellipse(note.x, note.y, 14, 10, -0.3, 0, Math.PI * 2); // 楕円を描画
+        ctx.ellipse(note.x, note.y, 14, 10, -0.3, 0, Math.PI * 2);
         ctx.fill();
 
-        // 判定後の色付け
         if (note.judged) {
           ctx.fillStyle = note.correct
             ? "rgba(34, 197, 94, 0.7)"
@@ -600,58 +589,101 @@
 
       // --- ゲームロジック ---
       function generateNote() {
-        if (!gameRunning || score.total >= GAME_LENGTH) return;
+        if (!gameRunning || score.total >= score.max) return;
 
-        const scaleNoteObjects = SCALES[currentKeyName].notes;
-        let finalMidiNote = -1;
-        let baseNoteObject;
+        if (difficulty === "Easy") {
+          // Easy Mode Logic
+          const scaleNoteObjects = SCALES[currentKeyName].notes;
+          let finalMidiNote = -1;
+          let baseNoteObject;
+          while (finalMidiNote === -1) {
+            baseNoteObject =
+              scaleNoteObjects[
+                Math.floor(Math.random() * scaleNoteObjects.length)
+              ];
+            const validNotes = [];
+            for (const oct of [-1, 0, 1, 2]) {
+              const transposedMidi = baseNoteObject.midi + oct * 12;
+              if (transposedMidi >= 60 && transposedMidi <= 79)
+                validNotes.push(transposedMidi);
+            }
+            if (validNotes.length > 0)
+              finalMidiNote =
+                validNotes[Math.floor(Math.random() * validNotes.length)];
+          }
+          const midiNote = finalMidiNote;
+          const octave = Math.floor(midiNote / 12) - 1;
+          const C4_octave = 4;
+          const octaveOffset = (octave - C4_octave) * 7;
+          const totalStepsFromC4 = baseNoteObject.step + octaveOffset;
+          const y = C4_Y - totalStepsFromC4 * Y_STEP;
+          const names =
+            currentKeyName.includes("b") || currentKeyName.includes("F Major")
+              ? jaNoteNamesFlat
+              : jaNoteNamesSharp;
+          const name = names[midiNote % 12];
+          const pitch = { note: midiNote, y: y, name: name };
+          notesOnScreen.push({
+            x: canvas.width + 20,
+            y: y,
+            pitch: pitch,
+            id: Date.now() + Math.random(),
+            judged: false,
+            missed: false,
+          });
+        } else {
+          // Normal Mode Logic - 1音ずつ生成
+          if (currentChordIndex >= currentProgression.length) {
+            return; // 進行が終了
+          }
 
-        // Keep trying to find a note that can be transposed into the playable range
-        while (finalMidiNote === -1) {
-          baseNoteObject =
-            scaleNoteObjects[
-              Math.floor(Math.random() * scaleNoteObjects.length)
-            ];
+          const chordRoman = currentProgression[currentChordIndex];
+          const chord = getChordFromProgression(currentKeyName, chordRoman);
 
-          const validNotes = [];
-          // Try transposing by -1, 0, 1, 2 octaves to find a note in the C4-G5 range
-          for (const oct of [-1, 0, 1, 2]) {
-            const transposedMidi = baseNoteObject.midi + oct * 12;
-            if (transposedMidi >= 60 && transposedMidi <= 79) {
-              validNotes.push(transposedMidi);
+          if (!chord || !chord.notes[currentNoteInChordIndex]) return;
+
+          let midiNote = chord.notes[currentNoteInChordIndex];
+
+          // C4 (60) から G5 (79) の範囲に収める
+          while (midiNote < 60) {
+            midiNote += 12;
+          }
+          while (midiNote > 79) {
+            midiNote -= 12;
+          }
+
+          const { y, name } = getNoteInfo(midiNote, currentKeyName);
+          const pitch = { note: midiNote, y: y, name: name };
+
+          notesOnScreen.push({
+            x: canvas.width + 20,
+            y: y,
+            pitch: pitch,
+            id: Date.now() + Math.random(),
+            judged: false,
+            missed: false,
+          });
+
+          // 次の音/コードへインデックスを進める
+          currentNoteInChordIndex++;
+          if (currentNoteInChordIndex >= chord.notes.length) {
+            currentNoteInChordIndex = 0;
+            currentChordIndex++;
+
+            // 次のコード情報を表示
+            if (currentChordIndex < currentProgression.length) {
+              const nextChord = getChordFromProgression(
+                currentKeyName,
+                currentProgression[currentChordIndex]
+              );
+              if (nextChord) {
+                chordDisplay.textContent = `コード: ${nextChord.name}`;
+              }
+            } else {
+              chordDisplay.textContent = `コード: 終了`;
             }
           }
-
-          if (validNotes.length > 0) {
-            finalMidiNote =
-              validNotes[Math.floor(Math.random() * validNotes.length)];
-          }
         }
-
-        const midiNote = finalMidiNote;
-
-        const octave = Math.floor(midiNote / 12) - 1;
-        const C4_octave = 4;
-        const octaveOffset = (octave - C4_octave) * 7;
-        const totalStepsFromC4 = baseNoteObject.step + octaveOffset;
-        const y = C4_Y - totalStepsFromC4 * Y_STEP;
-
-        const names =
-          currentKeyName.includes("b") || currentKeyName.includes("F Major")
-            ? jaNoteNamesFlat
-            : jaNoteNamesSharp;
-        const name = names[midiNote % 12];
-
-        const pitch = { note: midiNote, y: y, name: name };
-
-        notesOnScreen.push({
-          x: canvas.width + 20,
-          y: y,
-          pitch: pitch,
-          id: Date.now() + Math.random(),
-          judged: false,
-          missed: false,
-        });
       }
 
       let noteGeneratorInterval;
@@ -690,24 +722,54 @@
         drawTextEffects();
       }
 
+      function updateNoteGenerationInterval() {
+        if (noteGeneratorInterval) clearInterval(noteGeneratorInterval);
+        const interval =
+          difficulty === "Normal"
+            ? NOTE_GENERATION_INTERVAL / 3 // Normalモードは3倍速でノート生成
+            : NOTE_GENERATION_INTERVAL;
+        noteGeneratorInterval = setInterval(generateNote, interval / noteSpeed);
+      }
+
       function startGame() {
         if (gameRunning) return;
+        const availableKeys = Object.keys(SCALES).filter(
+          (k) => SCALES[k].progressions && SCALES[k].progressions.length > 0
+        );
         currentKeyName =
-          KEY_NAMES[Math.floor(Math.random() * KEY_NAMES.length)];
+          availableKeys[Math.floor(Math.random() * availableKeys.length)];
         keyDisplay.textContent = `キー: ${currentKeyName}`;
+
+        score.max =
+          difficulty === "Easy" ? EASY_GAME_LENGTH : NORMAL_GAME_CHORDS * 3;
+
+        if (difficulty === "Normal") {
+          const progressions = SCALES[currentKeyName].progressions;
+          currentProgression =
+            progressions[Math.floor(Math.random() * progressions.length)];
+          currentChordIndex = 0;
+          currentNoteInChordIndex = 0;
+
+          const firstChord = getChordFromProgression(
+            currentKeyName,
+            currentProgression[0]
+          );
+          if (firstChord) {
+            chordDisplay.textContent = `コード: ${firstChord.name}`;
+          }
+          chordDisplay.classList.remove("hidden");
+        } else {
+          chordDisplay.classList.add("hidden");
+        }
 
         gameRunning = true;
         notesOnScreen = [];
         textEffects = [];
         highlightEffects = [];
-        score = { correct: 0, total: 0 };
+        score.correct = 0;
+        score.total = 0;
         updateScore();
-        if (noteGeneratorInterval) clearInterval(noteGeneratorInterval);
-        noteGeneratorInterval = setInterval(
-          generateNote,
-          NOTE_GENERATION_INTERVAL / noteSpeed
-        );
-
+        updateNoteGenerationInterval();
         gameLoop();
       }
 
@@ -719,6 +781,7 @@
       function endGame() {
         stopGame();
         finalScoreSpan.textContent = score.correct;
+        finalMaxScoreSpan.textContent = score.max;
         gameOverScreen.classList.remove("hidden");
         gameOverScreen.classList.add("flex");
       }
@@ -731,7 +794,6 @@
 
       function showResult(correct, note) {
         score.total++;
-        let effectColor;
         if (correct) {
           score.correct++;
           resultDisplay.textContent = "良";
@@ -757,7 +819,7 @@
         setTimeout(() => {
           resultDisplay.textContent = "";
         }, 800);
-        if (score.total >= GAME_LENGTH) {
+        if (score.total >= score.max) {
           endGame();
         }
       }
@@ -772,7 +834,6 @@
         accuracySpan.textContent = accuracy;
       }
 
-      // --- Web Audio ---
       function initAudio() {
         if (!audioCtx) {
           try {
@@ -797,20 +858,16 @@
         const now = audioCtx.currentTime;
         gainNode.gain.cancelScheduledValues(now);
         gainNode.gain.setValueAtTime(0, now);
-        // Attack
         gainNode.gain.linearRampToValueAtTime(volume, now + 0.02);
-        // Decay and Sustain
         gainNode.gain.exponentialRampToValueAtTime(volume * 0.5, now + 0.2);
-        // Release
         gainNode.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
         oscillator.start(now);
         oscillator.stop(now + duration);
       }
 
-      // --- Web Bluetooth MIDI ---
       connectButton.addEventListener("click", async () => {
-        initAudio(); // Initialize audio on user interaction
+        initAudio();
         if (!navigator.bluetooth) {
           statusDisplay.textContent =
             "Web Bluetooth APIはこのブラウザではサポートされていません。";
@@ -890,22 +947,21 @@
           (note) =>
             !note.judged &&
             note.x > JUDGEMENT_LINE_X - JUDGEMENT_AREA_WIDTH &&
-            note.x < JUDGEMENT_LINE_X + JUDGEMENT_AREA_WIDTH
+            note.x < JUDGEMENT_LINE_X + JUDGEMENT_AREA_WIDTH &&
+            note.pitch.note === noteNumber
         );
         if (targetNote) {
           targetNote.judged = true;
-          const correct = targetNote.pitch.note === noteNumber;
-          targetNote.correct = correct;
-          showResult(correct, targetNote);
+          targetNote.correct = true;
+          showResult(true, targetNote);
         }
       }
 
-      // --- 画面キーボード ---
       function createPianoKeyboard() {
         const keyboardContainer = document.getElementById("piano-keyboard");
         if (!keyboardContainer) return;
-        keyboardContainer.innerHTML = ""; // Clear previous keys
-        const noteRange = { start: 60, end: 79 }; // C4 to G5
+        keyboardContainer.innerHTML = "";
+        const noteRange = { start: 60, end: 79 };
         const isBlackKey = [
           false,
           true,
@@ -954,15 +1010,13 @@
 
           const handlePress = (e) => {
             e.preventDefault();
-            initAudio(); // Make sure audio context is ready
-            if (!gameRunning) startGame(); // Start game on first click if not running
+            initAudio();
+            if (!gameRunning) startGame();
             onMidiNoteOn(midiNote);
             key.classList.add("active");
           };
 
-          const handleRelease = () => {
-            key.classList.remove("active");
-          };
+          const handleRelease = () => key.classList.remove("active");
 
           key.addEventListener("mousedown", handlePress);
           key.addEventListener("mouseup", handleRelease);
@@ -975,15 +1029,20 @@
       }
 
       // --- 初期化処理 ---
+      difficultyButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          difficulty = button.dataset.difficulty;
+          difficultyButtons.forEach((btn) => btn.classList.remove("active"));
+          button.classList.add("active");
+          if (gameRunning) restartGame();
+        });
+      });
+
       speedSlider.addEventListener("input", (e) => {
         noteSpeed = parseFloat(e.target.value);
         speedValueSpan.textContent = noteSpeed.toFixed(1);
         if (gameRunning) {
-          clearInterval(noteGeneratorInterval);
-          noteGeneratorInterval = setInterval(
-            generateNote,
-            NOTE_GENERATION_INTERVAL / noteSpeed
-          );
+          updateNoteGenerationInterval();
         }
       });
       volumeSlider.addEventListener("input", (e) => {
